@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+from PIL import Image
 
 api_endpoint = "http://localhost:11434/api/generate"
 
@@ -13,6 +14,10 @@ st.set_page_config(
     }
 )
 
+img = Image.open("logo.png")
+new_size = (100,100)
+img= img.resize(new_size)
+st.image(img)
 st.title("Malla Bot!")
 st.caption("Ask Your Favorite Tunisian AI anything! 🇹🇳")
 
