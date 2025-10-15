@@ -5,6 +5,7 @@ import json
 
 api_endpoint = "http://localhost:11434/api/generate"
 
+#page setup
 st.set_page_config(
     page_title="MALLA BOT",
     page_icon="🌶️",
@@ -14,13 +15,26 @@ st.set_page_config(
         'About':"I hope you enjoyed the experience 🇹🇳 made by ZeroOne"
     }
 )
-
+#image Init
 img = Image.open("logo.png")
-new_size = (100,100)
+new_size = (90,90)
 img= img.resize(new_size)
 st.image(img)
 st.title("Malla Bot!")
 st.caption("Ask Your Favorite Tunisian AI anything! 🇹🇳")
+
+#sidebar
+with st.sidebar:
+    if st.button("New Chat"):
+        st.session_state.messages = []
+        st.rerun()
+
+    with st.expander("Model Parameters",expanded=False):
+        temperature= st.slider("Temeprature (Creativity)",0.0,1.5,0.7,0.1)
+        max_tokens = st.number_input("Max Tokens",min_value=50, max_value=2000, value=200, step=50)
+
+
+
 
 # Initialize chat history
 if "messages" not in st.session_state:
