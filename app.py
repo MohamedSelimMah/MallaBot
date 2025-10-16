@@ -23,7 +23,7 @@ st.image(img)
 st.title("Malla Bot!")
 st.caption("Ask Your Favorite Tunisian AI anything! 🇹🇳")
 
-# --- SESSION STATE INIT ---
+# --- INITIALIZE SESSION STATE ---
 if "chats" not in st.session_state:
     st.session_state.chats = {}  # {chat_name: [messages]}
 if "current_chat" not in st.session_state:
@@ -34,13 +34,15 @@ if "new_chat_trigger" not in st.session_state:
 # --- SIDEBAR ---
 with st.sidebar:
     # NEW CHAT BUTTON
-    if st.button("New Chat"):
+    if st.button("🆕 New Chat"):
         st.session_state.current_chat = None
         st.session_state.new_chat_trigger = True
+        st.rerun()  # instantly clears screen when clicked
 
     # CHAT HISTORY
     st.subheader("Chat History")
     chat_names = list(st.session_state.chats.keys())
+
     if chat_names:
         current_index = 0
         if st.session_state.current_chat in chat_names:
@@ -49,19 +51,20 @@ with st.sidebar:
         if selected_chat != st.session_state.current_chat:
             st.session_state.current_chat = selected_chat
             st.session_state.new_chat_trigger = False
+            st.rerun()  # refresh view when switching chats
 
     # MODEL PARAMETERS
     with st.expander("Model Parameters", expanded=False):
         temperature = st.slider("Temperature (Creativity)", 0.0, 1.5, 0.7, 0.1)
         max_tokens = st.number_input("Max Tokens", min_value=50, max_value=2000, value=300, step=50)
 
-# --- CHAT HANDLING ---
-if st.session_state.new_chat_trigger:
-    messages = []
-else:
+# --- FETCH CURRENT CHAT MESSAGES ---
+if st.session_state.current_chat and not st.session_state.new_chat_trigger:
     messages = st.session_state.chats.get(st.session_state.current_chat, [])
+else:
+    messages = []
 
-# Display previous chat messages
+# --- DISPLAY EXISTING MESSAGES ---
 for msg in messages:
     st.chat_message(msg["role"]).markdown(msg["content"])
 
@@ -69,29 +72,26 @@ for msg in messages:
 prompt = st.chat_input("Ekteb li theb...")
 
 if prompt:
-    if st.session_state.new_chat_trigger:
-        st.session_state.new_chat_trigger = False
-
-    # Create new chat if needed
-    if st.session_state.current_chat is None:
+    # If a new chat was triggered, start a fresh one
+    if st.session_state.new_chat_trigger or st.session_state.current_chat is None:
         chat_name = prompt[:30] + "..." if len(prompt) > 30 else prompt
         st.session_state.current_chat = chat_name
         st.session_state.chats[chat_name] = []
+        st.session_state.new_chat_trigger = False
         messages = st.session_state.chats[chat_name]
 
     # Add user message
     messages.append({"role": "user", "content": prompt})
     st.chat_message("user").markdown(prompt)
 
-    # Generate assistant reply
+    # --- GENERATE REPLY ---
     with st.spinner("mmm dkika nkhamem..."):
         try:
             response = client.chat.completions.create(
-                model="gpt-4o-mini",  # Fast, cheap, and smart
+                model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "You are Malla Bot, a friendly and funny Tunisian AI 🇹🇳. Speak in a casual, humorous tone."},
+                    {"role": "system", "content": "You are Malla Bot, a friendly and funny Tunisian AI 🇹🇳."},
                     *[{"role": m["role"], "content": m["content"]} for m in messages],
-                    {"role": "user", "content": prompt},
                 ],
                 temperature=temperature,
                 max_tokens=max_tokens,
