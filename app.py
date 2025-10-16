@@ -1,9 +1,9 @@
 import streamlit as st
-import requests
+from openai import OpenAI
 from PIL import Image
-import json
 
-api_endpoint = "http://localhost:11434/api/generate"
+# --- INITIALIZE OPENAI CLIENT ---
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # --- PAGE SETUP ---
 st.set_page_config(
@@ -23,17 +23,20 @@ st.image(img)
 st.title("Malla Bot!")
 st.caption("Ask Your Favorite Tunisian AI anything! 🇹🇳")
 
-# --- INITIALIZE STATE ---
+# --- SESSION STATE INIT ---
 if "chats" not in st.session_state:
     st.session_state.chats = {}  # {chat_name: [messages]}
 if "current_chat" not in st.session_state:
-    st.session_state.current_chat = None  # no chat yet
+    st.session_state.current_chat = None
+if "new_chat_trigger" not in st.session_state:
+    st.session_state.new_chat_trigger = False
 
 # --- SIDEBAR ---
 with st.sidebar:
     # NEW CHAT BUTTON
     if st.button("New Chat"):
         st.session_state.current_chat = None
+        st.session_state.new_chat_trigger = True
 
     # CHAT HISTORY
     st.subheader("Chat History")
@@ -42,20 +45,23 @@ with st.sidebar:
         current_index = 0
         if st.session_state.current_chat in chat_names:
             current_index = chat_names.index(st.session_state.current_chat)
-
         selected_chat = st.selectbox("Select a chat:", chat_names, index=current_index)
         if selected_chat != st.session_state.current_chat:
             st.session_state.current_chat = selected_chat
+            st.session_state.new_chat_trigger = False
 
     # MODEL PARAMETERS
     with st.expander("Model Parameters", expanded=False):
         temperature = st.slider("Temperature (Creativity)", 0.0, 1.5, 0.7, 0.1)
-        max_tokens = st.number_input("Max Tokens", min_value=50, max_value=2000, value=200, step=50)
+        max_tokens = st.number_input("Max Tokens", min_value=50, max_value=2000, value=300, step=50)
 
-# --- GET CURRENT CHAT MESSAGES ---
-messages = st.session_state.chats.get(st.session_state.current_chat, [])
+# --- CHAT HANDLING ---
+if st.session_state.new_chat_trigger:
+    messages = []
+else:
+    messages = st.session_state.chats.get(st.session_state.current_chat, [])
 
-# Display previous messages
+# Display previous chat messages
 for msg in messages:
     st.chat_message(msg["role"]).markdown(msg["content"])
 
@@ -63,47 +69,44 @@ for msg in messages:
 prompt = st.chat_input("Ekteb li theb...")
 
 if prompt:
-    # Create a new chat if none exists
+    if st.session_state.new_chat_trigger:
+        st.session_state.new_chat_trigger = False
+
+    # Create new chat if needed
     if st.session_state.current_chat is None:
         chat_name = prompt[:30] + "..." if len(prompt) > 30 else prompt
         st.session_state.current_chat = chat_name
         st.session_state.chats[chat_name] = []
         messages = st.session_state.chats[chat_name]
 
-    # Append user message
+    # Add user message
     messages.append({"role": "user", "content": prompt})
     st.chat_message("user").markdown(prompt)
 
-    payload = {
-        "model": "llama3.2",
-        "prompt": f"User: {prompt}",
-        "temperature": temperature,
-        "max_tokens": max_tokens
-    }
-
+    # Generate assistant reply
     with st.spinner("mmm dkika nkhamem..."):
         try:
-            response = requests.post(api_endpoint, json=payload, stream=True)
-            response.raise_for_status()
-        except requests.exceptions.RequestException as e:
-            st.error(f"Request failed: {e}")
-        else:
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",  # Fast, cheap, and smart
+                messages=[
+                    {"role": "system", "content": "You are Malla Bot, a friendly and funny Tunisian AI 🇹🇳. Speak in a casual, humorous tone."},
+                    *[{"role": m["role"], "content": m["content"]} for m in messages],
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=temperature,
+                max_tokens=max_tokens,
+                stream=True,
+            )
+
             full_response = ""
             with st.chat_message("assistant"):
                 placeholder = st.empty()
-                for line in response.iter_lines(decode_unicode=True):
-                    if not line:
-                        continue
-                    # Handle JSON or raw text
-                    try:
-                        parsed = json.loads(line)
-                        text_chunk = parsed.get("response") or parsed.get("text") or parsed.get("token") or ""
-                    except Exception:
-                        text_chunk = line.decode("utf-8") if isinstance(line, bytes) else line
-                        if text_chunk.startswith("data: "):
-                            text_chunk = text_chunk[len("data: "):]
-
+                for chunk in response:
+                    text_chunk = chunk.choices[0].delta.get("content", "")
                     full_response += text_chunk
                     placeholder.markdown(full_response)
 
             messages.append({"role": "assistant", "content": full_response})
+
+        except Exception as e:
+            st.error(f"Error: {e}")
