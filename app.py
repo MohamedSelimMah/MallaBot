@@ -34,7 +34,7 @@ if "new_chat_trigger" not in st.session_state:
 # --- SIDEBAR ---
 with st.sidebar:
     # NEW CHAT BUTTON
-    if st.button("🆕 New Chat"):
+    if st.button("New Chat"):
         st.session_state.current_chat = None
         st.session_state.new_chat_trigger = True
         st.rerun()  # instantly clears screen when clicked
