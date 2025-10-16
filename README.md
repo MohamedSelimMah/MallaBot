@@ -26,7 +26,10 @@ Click the link below to chat with Malla Bot instantly:
 
 ## Screenshots
 
-![Malla Bot Screenshot](screenshot 1.png)  
+## Screenshots
+
+![Malla Bot Screenshot](screenshot1.png)
+
 
 ---
 
