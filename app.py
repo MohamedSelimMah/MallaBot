@@ -31,14 +31,12 @@ if "current_chat" not in st.session_state:
 
 # --- SIDEBAR ---
 with st.sidebar:
-    st.header("⚙️ Settings")
-
     # NEW CHAT BUTTON
-    if st.button("🆕 New Chat"):
+    if st.button("New Chat"):
         st.session_state.current_chat = None
 
     # CHAT HISTORY
-    st.subheader("🗂️ Chat History")
+    st.subheader("Chat History")
     chat_names = list(st.session_state.chats.keys())
     if chat_names:
         current_index = 0
