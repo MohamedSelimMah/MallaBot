@@ -20,7 +20,7 @@ Experience Malla Bot live here: [Try Malla Bot Online](https://share.streamlit.i
 
 Click the link below to chat with Malla Bot instantly:  
 
-[🌐 Try Malla Bot](https://share.streamlit.io/yourusername/mallabot/main/app.py)  
+[🌐 Try Malla Bot](https://mallabot-fcc3rzgyeypgnpmbwse7bc.streamlit.app/)  
 
 ---
 
