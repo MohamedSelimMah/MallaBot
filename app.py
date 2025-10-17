@@ -15,23 +15,6 @@ st.set_page_config(
     }
 )
 
-# Custom CSS for better styling
-st.markdown("""
-<style>
-    .stChatMessage {
-        padding: 12px;
-        border-radius: 15px;
-        margin: 5px 0;
-    }
-    .sidebar .sidebar-content {
-        background-color: #f0f2f6;
-    }
-    .chat-header {
-        text-align: center;
-        padding: 10px;
-    }
-</style>
-""", unsafe_allow_html=True)
 
 # --- LOGO + TITLE ---
 try:
@@ -57,7 +40,7 @@ with st.sidebar:
     st.markdown('</div>', unsafe_allow_html=True)
     
     # NEW CHAT BUTTON
-    if st.button("🆕 New Chat", use_container_width=True):
+    if st.button("New Chat"):
         st.session_state.current_chat = None
         st.rerun()
     
@@ -126,6 +109,11 @@ with st.sidebar:
             help="Maximum length of response"
         )
         
+        top_p = st.slider(
+            "Top P", 
+            0.1, 1.0, 0.9, 0.1,
+            help="Nucleus sampling probability threshold"
+        )
 
     # SYSTEM PROMPT
     with st.expander("🤖 System Prompt", expanded=False):
@@ -143,7 +131,6 @@ with st.sidebar:
                 chat_data = {
                     "chat_name": st.session_state.current_chat,
                     "export_date": datetime.datetime.now().isoformat(),
-                    "model_used": selected_model,
                     "parameters": {
                         "temperature": temperature,
                         "max_tokens": max_tokens,
@@ -207,7 +194,7 @@ if prompt:
 
     # Prepare payload for Ollama
     payload = {
-        "model": selected_model,
+        "model": "llama3.2",  # Fixed model name
         "prompt": prompt,
         "system": system_prompt,
         "temperature": temperature,
