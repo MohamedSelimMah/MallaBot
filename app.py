@@ -1,112 +1,81 @@
 import streamlit as st
-from openai import OpenAI
+import requests
 from PIL import Image
+import json
 
-# --- INITIALIZE OPENAI CLIENT ---
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+# ===== Clarifai API configuration =====
+API_URL = "https://api.clarifai.com/v2/users/openai/apps/chat-completion/models/gpt-4-turbo/versions/182136408b4b4002a920fd500839f2c8/outputs"
+API_KEY = "56cdc5d57f90447cba9600f6397e0184"  # ← your Clarifai key
 
-# --- PAGE SETUP ---
+# ===== Page setup =====
 st.set_page_config(
-    page_title="MALLA BOT",
+    page_title="MALLA BOT 🌶️",
     page_icon="🌶️",
     initial_sidebar_state="expanded",
     menu_items={
         'Report a bug': 'mailto:mahjoubselim07@gmail.com',
-        'About': "I hope you enjoyed the experience 🇹🇳 made by ZeroOne"
+        'About': "🇹🇳 Made by ZeroOne — Malla Bot, the friendly Tunisian AI."
     }
 )
 
-# --- LOGO + TITLE ---
-img = Image.open("logo.png")
-img = img.resize((90, 90))
-st.image(img)
-st.title("Malla Bot!")
-st.caption("Ask Your Favorite Tunisian AI anything! 🇹🇳")
+# ===== Logo =====
+try:
+    img = Image.open("weebsu.png")
+    st.image(img.resize((120, 120)))
+except:
+    st.warning("⚠️ Logo not found (weebsu.png).")
 
-# --- INITIALIZE SESSION STATE ---
-if "chats" not in st.session_state:
-    st.session_state.chats = {}  # {chat_name: [messages]}
-if "current_chat" not in st.session_state:
-    st.session_state.current_chat = None
-if "new_chat_trigger" not in st.session_state:
-    st.session_state.new_chat_trigger = False
+st.title("🌶️ MALLA BOT — Friendly Tunisian AI Chatbot")
 
-# --- SIDEBAR ---
+# ===== Sidebar controls =====
 with st.sidebar:
-    # NEW CHAT BUTTON
-    if st.button("New Chat"):
-        st.session_state.current_chat = None
-        st.session_state.new_chat_trigger = True
-        st.rerun()  # instantly clears screen when clicked
+    st.header("⚙️ Settings")
+    temperature = st.slider("Creativity", 0.0, 1.0, 0.7, 0.1)
+    max_tokens = st.slider("Max Response Length", 50, 500, 200, 10)
+    new_chat = st.button("🆕 New Chat")
 
-    # CHAT HISTORY
-    st.subheader("Chat History")
-    chat_names = list(st.session_state.chats.keys())
+# ===== Reset chat when “New Chat” clicked =====
+if new_chat:
+    st.session_state.messages = []
+    st.experimental_rerun()
 
-    if chat_names:
-        current_index = 0
-        if st.session_state.current_chat in chat_names:
-            current_index = chat_names.index(st.session_state.current_chat)
-        selected_chat = st.selectbox("Select a chat:", chat_names, index=current_index)
-        if selected_chat != st.session_state.current_chat:
-            st.session_state.current_chat = selected_chat
-            st.session_state.new_chat_trigger = False
-            st.rerun()  # refresh view when switching chats
+# ===== Initialize chat history =====
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-    # MODEL PARAMETERS
-    with st.expander("Model Parameters", expanded=False):
-        temperature = st.slider("Temperature (Creativity)", 0.0, 1.5, 0.7, 0.1)
-        max_tokens = st.number_input("Max Tokens", min_value=50, max_value=2000, value=300, step=50)
+# ===== Display chat messages =====
+for msg in st.session_state.messages:
+    st.chat_message(msg["role"]).write(msg["content"])
 
-# --- FETCH CURRENT CHAT MESSAGES ---
-if st.session_state.current_chat and not st.session_state.new_chat_trigger:
-    messages = st.session_state.chats.get(st.session_state.current_chat, [])
-else:
-    messages = []
+# ===== Handle user input =====
+if prompt := st.chat_input("💬 Say something..."):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.chat_message("user").write(prompt)
 
-# --- DISPLAY EXISTING MESSAGES ---
-for msg in messages:
-    st.chat_message(msg["role"]).markdown(msg["content"])
+    # ----- Prepare Clarifai payload -----
+    payload = {
+        "inputs": [
+            {
+                "data": {
+                    "text": {
+                        "raw": prompt
+                    }
+                }
+            }
+        ]
+    }
 
-# --- CHAT INPUT ---
-prompt = st.chat_input("Ekteb li theb...")
+    headers = {
+        "Authorization": f"Key {API_KEY}",
+        "Content-Type": "application/json"
+    }
 
-if prompt:
-    # If a new chat was triggered, start a fresh one
-    if st.session_state.new_chat_trigger or st.session_state.current_chat is None:
-        chat_name = prompt[:30] + "..." if len(prompt) > 30 else prompt
-        st.session_state.current_chat = chat_name
-        st.session_state.chats[chat_name] = []
-        st.session_state.new_chat_trigger = False
-        messages = st.session_state.chats[chat_name]
+    try:
+        response = requests.post(API_URL, headers=headers, json=payload)
+        response.raise_for_status()
+        output = response.json()["outputs"][0]["data"]["text"]["raw"]
+    except Exception as e:
+        output = f"⚠️ Error: {e}"
 
-    # Add user message
-    messages.append({"role": "user", "content": prompt})
-    st.chat_message("user").markdown(prompt)
-
-    # --- GENERATE REPLY ---
-    with st.spinner("mmm dkika nkhamem..."):
-        try:
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "You are Malla Bot, a friendly and funny Tunisian AI 🇹🇳."},
-                    *[{"role": m["role"], "content": m["content"]} for m in messages],
-                ],
-                temperature=temperature,
-                max_tokens=max_tokens,
-                stream=True,
-            )
-
-            full_response = ""
-            with st.chat_message("assistant"):
-                placeholder = st.empty()
-                for chunk in response:
-                    text_chunk = chunk.choices[0].delta.get("content", "")
-                    full_response += text_chunk
-                    placeholder.markdown(full_response)
-
-            messages.append({"role": "assistant", "content": full_response})
-
-        except Exception as e:
-            st.error(f"Error: {e}")
+    st.session_state.messages.append({"role": "assistant", "content": output})
+    st.chat_message("assistant").write(output)
