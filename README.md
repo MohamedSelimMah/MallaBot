@@ -137,10 +137,6 @@ Please reach out to the developer below!
 ## 👨‍💻 Developer
 
 **ZeroOne**  
-- Email: mahjoubselim07@gmail.com  
-- Location: Tunisia 🇹🇳  
-- Specialization: AI Applications & Chatbot Development  
-
 ---
 
 *Explore the future of Tunisian AI with Malla Bot's interface - the brains are coming soon!* 🌶️
